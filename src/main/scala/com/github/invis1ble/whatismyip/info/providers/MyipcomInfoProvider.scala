@@ -35,14 +35,14 @@ class MyipcomInfoProvider(implicit system: ActorSystem[Nothing]) extends InfoPro
 
   def info: Future[Info] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
-    val acceptedMediaType = MediaTypes.`application/json`
+    val jsonMediaType = MediaTypes.`application/json`
 
     Http().singleRequest(
-      HttpRequest(uri = "https://api.myip.com", headers = Seq(Accept(acceptedMediaType)))
+      HttpRequest(uri = "https://api.myip.com", headers = Seq(Accept(jsonMediaType)))
     )
       .flatMap { response =>
         response.status match {
-          case StatusCodes.OK => Unmarshal(response.entity.withContentType(acceptedMediaType)).to[Info]
+          case StatusCodes.OK => Unmarshal(response.entity.withContentType(jsonMediaType)).to[Info]
           case _ =>
             response.discardEntityBytes()
             throw new RuntimeException(s"Expected 200 HTTP status, got ${response.status}.")
