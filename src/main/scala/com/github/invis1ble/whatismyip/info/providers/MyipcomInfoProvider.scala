@@ -1,14 +1,18 @@
 package com.github.invis1ble.whatismyip.info.providers
 
+import akka.NotUsed
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import akka.http.scaladsl.model.MediaType.WithFixedCharset
 import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.model.{HttpRequest, MediaTypes, StatusCodes}
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, MediaTypes, StatusCodes}
 import akka.http.scaladsl.unmarshalling.Unmarshal
+import akka.stream.scaladsl.Source
 import com.github.invis1ble.whatismyip.info._
 import spray.json._
 
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
 object InfoProtocol extends SprayJsonSupport with DefaultJsonProtocol {
@@ -33,21 +37,33 @@ object InfoProtocol extends SprayJsonSupport with DefaultJsonProtocol {
 class MyipcomInfoProvider(implicit system: ActorSystem[Nothing]) extends InfoProvider {
   import com.github.invis1ble.whatismyip.info.providers.InfoProtocol._
 
-  def info: Future[Info] = {
-    implicit val ec: ExecutionContextExecutor = system.executionContext
-    val jsonMediaType = MediaTypes.`application/json`
+  protected val jsonMediaType: WithFixedCharset = MediaTypes.`application/json`
 
-    Http().singleRequest(
-      HttpRequest(uri = "https://api.myip.com", headers = Seq(Accept(jsonMediaType)))
-    )
-      .flatMap { response =>
+  override def info(interval: FiniteDuration): Source[Option[Info], _] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+
+    val request = HttpRequest(uri = "https://api.myip.com", headers = Seq(Accept(jsonMediaType)))
+    val responseFutureF: NotUsed => Future[Option[HttpResponse]] = _ => Http().singleRequest(request)
+      .map { response =>
         response.status match {
-          case StatusCodes.OK => Unmarshal(response.entity.withContentType(jsonMediaType)).to[Info]
+          case StatusCodes.OK => Some(response)
           case _ =>
             response.discardEntityBytes()
             throw new RuntimeException(s"Expected 200 HTTP status, got ${response.status}.")
         }
       }
+      .recover(_ => None)
+
+    Source.tick(0.millisecond, interval, NotUsed)
+      .log("before request")
+      .mapAsync(1)(responseFutureF)
+      .log("before unmarshalling")
+      .mapAsync(1) {
+        case Some(response) => Unmarshal(response.entity.withContentType(jsonMediaType)).to[Info]
+          .map(Some(_))
+        case _ => Future(None)
+      }
+      .log("before info providing")
   }
 }
 
