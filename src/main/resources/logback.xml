@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>OFF</level>
+<!--            <level>DEBUG</level>-->
+        </filter>
+        <encoder>
+            <pattern>[%date{ISO8601}] [%level] [%logger] [%marker] [%thread] - %msg MDC: {%mdc}%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC" class="net.logstash.logback.appender.LoggingEventAsyncDisruptorAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARNING</level>
+<!--            <level>DEBUG</level>-->
+        </filter>
+        <appender class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>target/logs/logback/whatismyip.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>target/logs/logback/whatismyip_%d{yyyy-MM-dd}.log</fileNamePattern>
+            </rollingPolicy>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
+        </appender>
+    </appender>
+
+    <root level="DEBUG">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="ASYNC" />
+    </root>
+</configuration>
