@@ -14,4 +14,5 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka"   %% "akka-http-spray-json"     % AkkaHttpVersion,
   "ch.qos.logback"       % "logback-classic"          % "1.2.3",
   "net.logstash.logback" % "logstash-logback-encoder" % "6.6",
+  "com.github.scopt"    %% "scopt"                    % "4.0.1"
 )
