@@ -73,7 +73,7 @@ object App {
 
     OParser.sequence(
       programName("whatismyip"),
-      head("whatismyip", "1.2.0"),
+      head("whatismyip", "1.3.0"),
       opt[Option[File]]('f', "file")
         .action((x, c) => c.copy(file = x))
         .validate {
