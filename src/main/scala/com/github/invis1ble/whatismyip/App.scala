@@ -11,7 +11,7 @@ import scopt.{DefaultOEffectSetup, DefaultOParserSetup, OParser}
 
 import java.io.{File, PrintWriter}
 import scala.concurrent.ExecutionContextExecutor
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 object App {
   private val logger = LoggerFactory.getLogger(getClass.getName.replaceFirst("\\$$", ""))
@@ -27,7 +27,7 @@ object App {
     implicit val system: ActorSystem[Nothing] = ActorSystem(Behaviors.empty, "WhatIsMyIpAddress")
     implicit val ec: ExecutionContextExecutor = system.executionContext
 
-    MyipcomInfoProvider().info(1.minute)
+    MyipcomInfoProvider().info(config.interval)
       .addAttributes(Attributes.logLevels(
         onElement = Logging.DebugLevel,
         onFinish = Logging.InfoLevel,
@@ -73,7 +73,7 @@ object App {
 
     OParser.sequence(
       programName("whatismyip"),
-      head("whatismyip", "1.2.0"),
+      head("whatismyip", "1.3.0"),
       opt[Option[File]]('f', "file")
         .action((x, c) => c.copy(file = x))
         .validate {
@@ -89,6 +89,13 @@ object App {
           case None => success
         }
         .text("Output file (will be created if not exists)"),
+      opt[FiniteDuration]('i', "interval")
+        .action((x, c) => c.copy(interval = x))
+        .validate { interval =>
+          if (interval >= 1.second) success
+          failure("Interval must be >= 1 second")
+        }
+        .text("update interval (in Scala's Duration format)"),
       help("help").text("prints this usage text"),
       version("version")
     )
